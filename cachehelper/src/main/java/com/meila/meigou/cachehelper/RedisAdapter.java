@@ -26,17 +26,21 @@ import com.meila.meigou.cachehelper.jedis.JedisAction;
 public class RedisAdapter {
 	private static final Logger log = LoggerFactory.getLogger(RedisAdapter.class);
 
-	private JedisPool pool;// 默认使用jedis实现
+	private JedisPool jedisPool;// 默认使用jedis实现
+
+	private RedisAdapter() {
+
+	}
 
 	public RedisAdapter(JedisPool pool) {
-		this.pool = pool;
+		this.jedisPool = pool;
 	}
 
 	public <T> T execute(JedisAction<T> jedisAction) throws JedisException {
 		Jedis jedis = null;
 		boolean broken = false;
 		try {
-			jedis = pool.getResource();
+			jedis = jedisPool.getResource();
 			return jedisAction.action(jedis);
 		} catch (JedisConnectionException e) {
 			log.error("Redis connection lost.", e);
@@ -55,9 +59,9 @@ public class RedisAdapter {
 		if (jedis != null) {
 			try {
 				if (broken) {
-					pool.returnBrokenResource(jedis);
+					jedisPool.returnBrokenResource(jedis);
 				} else {
-					pool.returnResource(jedis);
+					jedisPool.returnResource(jedis);
 				}
 			} catch (Exception e) {
 				log.error("Error happen when return jedis to pool, try to close it directly.", e);

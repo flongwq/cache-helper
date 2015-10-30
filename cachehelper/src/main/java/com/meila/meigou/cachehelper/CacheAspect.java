@@ -9,8 +9,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.Method;
 
+import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.annotation.After;
+import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
@@ -32,11 +33,11 @@ public class CacheAspect {
 
 	private final static String DEFAULT_TABLE = "MEILACACHE";
 
-	@Pointcut("@annotation(com.vdlm.aop.Cached)")
+	@Pointcut("@annotation(com.meila.meigou.cachehelper.Cached)")
 	public void cachedPoint() {
 	}
 
-	@Pointcut("@annotation(com.vdlm.aop.CacheClear)")
+	@Pointcut("@annotation(com.meila.meigou.cachehelper.CacheClear)")
 	public void cacheClearPoint() {
 	}
 
@@ -60,6 +61,8 @@ public class CacheAspect {
 		// 使用table当做redis key，key参数当做hset的key
 		if (anno.table() == null || "".equals(anno.table())) {
 			cacheKey = DEFAULT_TABLE;
+		} else {
+			cacheKey = anno.table();
 		}
 		if (anno.key() == null || "".equals(anno.key())) {
 			hashKey = getCacheKey(targetName, methodName, arguments);
@@ -81,10 +84,10 @@ public class CacheAspect {
 		return result;
 	}
 
-	@After("cacheClearPoint()")
-	public void cacheClear(ProceedingJoinPoint pjp) throws Throwable {
+	@AfterReturning("cacheClearPoint()")
+	public void cacheClear(JoinPoint joinPoint) throws Throwable {
 		// 试图得到标注的Cached类
-		Method method = getMethod(pjp);
+		Method method = getMethod(joinPoint);
 		CacheClear anno = method.getAnnotation(CacheClear.class);
 		if (anno == null) {
 			return;
@@ -114,6 +117,26 @@ public class CacheAspect {
 		Method method = null;
 		try {
 			method = pjp.getTarget().getClass().getMethod(pjp.getSignature().getName(), argTypes);
+		} catch (NoSuchMethodException e) {
+			e.printStackTrace();
+		} catch (SecurityException e) {
+			e.printStackTrace();
+		}
+		return method;
+
+	}
+
+	@SuppressWarnings("rawtypes")
+	public Method getMethod(JoinPoint jp) {
+		// 获取参数的类型
+		Object[] args = jp.getArgs();
+		Class[] argTypes = new Class[jp.getArgs().length];
+		for (int i = 0; i < args.length; i++) {
+			argTypes[i] = args[i].getClass();
+		}
+		Method method = null;
+		try {
+			method = jp.getTarget().getClass().getMethod(jp.getSignature().getName(), argTypes);
 		} catch (NoSuchMethodException e) {
 			e.printStackTrace();
 		} catch (SecurityException e) {
