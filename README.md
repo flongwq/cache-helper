@@ -11,12 +11,12 @@ cache-helper的目的是封装缓存的使用，各系统间只需要简易配�
 	增加 <aop:aspectj-autoproxy />
 
 ##导入cachehelper包
-已经在私库nexus上发布 com.meila.meigou.cachehelper 
-在spring中注入 <context:component-scan base-package="com.meila.meigou.cachehelper" />
+	已经在私库nexus上发布 com.meila.meigou.cachehelper 
+	在spring中注入 <context:component-scan base-package="com.meila.meigou.cachehelper" />
 
 ##注入redis
 `
-    <bean id="jedisPool" class="com.meila.meigou.cachehelper.JedisPoolHelper" autowire="byType">
+	<bean id="jedisPool" class="com.meila.meigou.cachehelper.JedisPoolHelper" autowire="byType">
         <constructor-arg name="poolConfig">
             <bean class="org.apache.commons.pool2.impl.GenericObjectPoolConfig">
                 <property name="testOnBorrow" value="true"/>
