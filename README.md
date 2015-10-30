@@ -1,20 +1,20 @@
 # cache-helper
 spring缓存插件
-
+==============
 当多个系统同时调用同一个DB时，增加缓存易造成数据一致性问题，而通知所有子系统同步更新缓存也是较麻烦的事情。
 cache-helper的目的是封装缓存的使用，各系统间只需要简易配置就实现了缓存的操作。
 
-使用方式：
-1、spring容器支持aop：
+#使用方式：
+##spring容器支持aop：
 	在配置文件中beans节点下增加  xmlns:aop="http://www.springframework.org/schema/aop"
 	xsi:schemaLocation中增加 http://www.springframework.org/schema/aop  http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
 	增加 <aop:aspectj-autoproxy />
 
-2、导入cachehelper包
+##导入cachehelper包
 已经在私库nexus上发布 com.meila.meigou.cachehelper 
 在spring中注入 <context:component-scan base-package="com.meila.meigou.cachehelper" />
 
-3、注入redis
+##注入redis
     <bean id="jedisPool" class="com.meila.meigou.cachehelper.JedisPoolHelper" autowire="byType">
         <constructor-arg name="poolConfig">
             <bean class="org.apache.commons.pool2.impl.GenericObjectPoolConfig">
@@ -35,7 +35,7 @@ cache-helper的目的是封装缓存的使用，各系统间只需要简易配�
         <constructor-arg name="pool" ref="jedisPool"/>
     </bean>
 
-4、在service方法上增加annotation来实现缓存控制
+##在service方法上增加annotation来实现缓存控制
     增加缓存
     @Cached(table = "product_info",key="iamkey",expireTime=300)
     public ProductVO loadByProductCode(String productCode,SkuDisplayEnum skuDisplay) {
