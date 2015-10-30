@@ -15,6 +15,7 @@ cache-helper的目的是封装缓存的使用，各系统间只需要简易配�
 在spring中注入 <context:component-scan base-package="com.meila.meigou.cachehelper" />
 
 ##注入redis
+`
     <bean id="jedisPool" class="com.meila.meigou.cachehelper.JedisPoolHelper" autowire="byType">
         <constructor-arg name="poolConfig">
             <bean class="org.apache.commons.pool2.impl.GenericObjectPoolConfig">
@@ -34,7 +35,7 @@ cache-helper的目的是封装缓存的使用，各系统间只需要简易配�
     <bean id="redisAdapter" class="com.meila.meigou.cachehelper.RedisAdapter" autowire="byType">
         <constructor-arg name="pool" ref="jedisPool"/>
     </bean>
-
+``
 ##在service方法上增加annotation来实现缓存控制
     增加缓存
     @Cached(table = "product_info",key="iamkey",expireTime=300)
