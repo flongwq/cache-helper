@@ -17,6 +17,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.alibaba.fastjson.JSON;
@@ -30,6 +31,8 @@ import com.alibaba.fastjson.JSON;
 public class CacheAspect {
 	@Autowired
 	private RedisAdapter redisAdapter;
+	@Value("${meila.meigou.cachehelper.expiretime:3600}")
+	private Integer expireTime;
 
 	private final static String DEFAULT_TABLE = "MEILACACHE";
 
@@ -79,7 +82,12 @@ public class CacheAspect {
 			} else {
 				result = pjp.proceed();
 			}
-			put(cacheKey, hashKey, result);
+			int expire = expireTime;
+
+			if (anno.expireTime() > 0) {// 当注解中存在配置时，替换当前值
+				expire = anno.expireTime();
+			}
+			put(cacheKey, hashKey, result, expire);
 		}
 		return result;
 	}
@@ -96,8 +104,14 @@ public class CacheAspect {
 		if (anno.table() == null || "".equals(anno.table())) {
 			return;
 		}
-
-		redisAdapter.del(anno.table());
+		if (anno.table().indexOf(",") >= 0) {
+			String[] tables = anno.table().split(",");
+			for (String table : tables) {
+				redisAdapter.del(table);
+			}
+		} else {
+			redisAdapter.del(anno.table());
+		}
 	}
 
 	/**
@@ -161,8 +175,9 @@ public class CacheAspect {
 		return sb.toString();
 	}
 
-	public void put(final String key, final String field, Object value) {
+	public void put(final String key, final String field, Object value, int expireTime) {
 		redisAdapter.hset(key.getBytes(), field.getBytes(), serialize(value));
+		redisAdapter.expire(key, expireTime);
 	}
 
 	public <T> T get(final String key, final String hashKey, Class<T> elementType) {
