@@ -16,6 +16,8 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -29,6 +31,8 @@ import com.alibaba.fastjson.JSON;
 @Component
 @Aspect
 public class CacheAspect {
+	private static final Logger log = LoggerFactory.getLogger(CacheAspect.class);
+
 	@Autowired
 	private RedisAdapter redisAdapter;
 	@Value("${meila.meigou.cachehelper.expiretime:3600}")
@@ -53,6 +57,9 @@ public class CacheAspect {
 
 		// 试图得到标注的Cached类
 		Method method = getMethod(pjp);
+		if (method == null) {
+			return pjp.proceed();
+		}
 		Cached anno = method.getAnnotation(Cached.class);
 		if (anno == null) {
 			return pjp.proceed();
@@ -96,6 +103,9 @@ public class CacheAspect {
 	public void cacheClear(JoinPoint joinPoint) throws Throwable {
 		// 试图得到标注的Cached类
 		Method method = getMethod(joinPoint);
+		if (method == null) {
+			return;
+		}
 		CacheClear anno = method.getAnnotation(CacheClear.class);
 		if (anno == null) {
 			return;
@@ -131,10 +141,8 @@ public class CacheAspect {
 		Method method = null;
 		try {
 			method = pjp.getTarget().getClass().getMethod(pjp.getSignature().getName(), argTypes);
-		} catch (NoSuchMethodException e) {
-			e.printStackTrace();
-		} catch (SecurityException e) {
-			e.printStackTrace();
+		} catch (NoSuchMethodException | SecurityException e) {
+			log.error("CacheAspect cannot get method with expect annotation", e);
 		}
 		return method;
 
@@ -151,10 +159,8 @@ public class CacheAspect {
 		Method method = null;
 		try {
 			method = jp.getTarget().getClass().getMethod(jp.getSignature().getName(), argTypes);
-		} catch (NoSuchMethodException e) {
-			e.printStackTrace();
-		} catch (SecurityException e) {
-			e.printStackTrace();
+		} catch (NoSuchMethodException | SecurityException e) {
+			log.error("CacheAspect cannot get method with expect annotation", e);
 		}
 		return method;
 
@@ -201,7 +207,7 @@ public class CacheAspect {
 			byte[] bytes = baos.toByteArray();
 			return bytes;
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("object is not serializable", e);
 			throw new RuntimeException(e.getMessage(), e);
 		}
 	}
@@ -214,6 +220,7 @@ public class CacheAspect {
 			ObjectInputStream ois = new ObjectInputStream(bais);
 			return ois.readObject();
 		} catch (Exception e) {
+			log.error("object fail to unserialize", e);
 			throw new RuntimeException(e.getMessage(), e);
 		}
 	}
