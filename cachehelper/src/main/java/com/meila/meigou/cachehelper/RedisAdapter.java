@@ -100,7 +100,27 @@ public class RedisAdapter {
 		});
 	}
 
+	public byte[] get(final byte[] key) {
+		return execute(new JedisAction<byte[]>() {
+			@Override
+			public byte[] action(Jedis jedis) {
+				return jedis.get(key);
+			}
+		});
+	}
+
 	public String set(final String key, final String value) {
+		return execute(new JedisAction<String>() {
+
+			@Override
+			public String action(Jedis jedis) {
+				return jedis.set(key, value);
+			}
+		});
+
+	}
+
+	public String set(final byte[] key, final byte[] value) {
 		return execute(new JedisAction<String>() {
 
 			@Override

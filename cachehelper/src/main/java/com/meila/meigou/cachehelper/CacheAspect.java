@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 
 import org.aspectj.lang.JoinPoint;
@@ -40,11 +41,11 @@ public class CacheAspect {
 
 	private final static String DEFAULT_TABLE = "MEILACACHE";
 
-	@Pointcut("@annotation(com.meila.meigou.cachehelper.Cached)")
+	@Pointcut("@annotation(com.meila.meigou.cachehelper.MeilaCached)")
 	public void cachedPoint() {
 	}
 
-	@Pointcut("@annotation(com.meila.meigou.cachehelper.CacheClear)")
+	@Pointcut("@annotation(com.meila.meigou.cachehelper.MeilaCacheClear)")
 	public void cacheClearPoint() {
 	}
 
@@ -60,42 +61,105 @@ public class CacheAspect {
 		if (method == null) {
 			return pjp.proceed();
 		}
-		Cached anno = method.getAnnotation(Cached.class);
+		MeilaCached anno = method.getAnnotation(MeilaCached.class);
 		if (anno == null) {
 			return pjp.proceed();
 		}
-
 		Object result = null;
-		String cacheKey = null;
-		String hashKey = null;
-		// 使用table当做redis key，key参数当做hset的key
-		if (anno.table() == null || "".equals(anno.table())) {
-			cacheKey = DEFAULT_TABLE;
-		} else {
-			cacheKey = anno.table();
-		}
-		if (anno.key() == null || "".equals(anno.key())) {
-			hashKey = getCacheKey(targetName, methodName, arguments);
-		} else {
-			hashKey = anno.key();
-		}
-
+		/*
+		 * 为适应Product、Seller。Comment等特殊情形，增加type进行匹配
+		 */
 		Class returnType = ((MethodSignature) pjp.getSignature()).getReturnType();
-		// 试图获取cache中的值
-		result = get(cacheKey, hashKey, returnType);
-		if (result == null) {
-			if ((arguments != null) && (arguments.length != 0)) {
-				result = pjp.proceed(arguments);
-			} else {
-				result = pjp.proceed();
-			}
-			int expire = expireTime;
+		if (anno.type() == null || anno.type() == MeilaCacheType.None) {
+			String cacheKey = null;
+			String hashKey = null;
+			// 使用table当做redis key，key参数当做hset的key
+			if (anno.table() == null || "".equals(anno.table())) {
+				// 不填table时，直接使用key-value进行缓存
+				if (anno.key() == null || "".equals(anno.key())) {
+					cacheKey = getCacheKey(targetName, methodName, arguments);
+				} else {
+					cacheKey = anno.key();
+				}
+				result = get(cacheKey, returnType);
+				if (result == null) {
+					if ((arguments != null) && (arguments.length != 0)) {
+						result = pjp.proceed(arguments);
+					} else {
+						result = pjp.proceed();
+					}
+					int expire = expireTime;
 
-			if (anno.expireTime() > 0) {// 当注解中存在配置时，替换当前值
-				expire = anno.expireTime();
+					if (anno.expireTime() > 0) {// 当注解中存在配置时，替换当前值
+						expire = anno.expireTime();
+					}
+					put(cacheKey, result, expire);
+				}
+				return result;
 			}
-			put(cacheKey, hashKey, result, expire);
+			cacheKey = anno.table();
+			if (anno.key() == null || "".equals(anno.key())) {
+				hashKey = getCacheKey(targetName, methodName, arguments);
+			} else {
+				hashKey = anno.key();
+			}
+			// 试图获取cache中的值
+			result = get(cacheKey, hashKey, returnType);
+			if (result == null) {
+				if ((arguments != null) && (arguments.length != 0)) {
+					result = pjp.proceed(arguments);
+				} else {
+					result = pjp.proceed();
+				}
+				int expire = expireTime;
+
+				if (anno.expireTime() > 0) {// 当注解中存在配置时，替换当前值
+					expire = anno.expireTime();
+				}
+				put(cacheKey, hashKey, result, expire);
+			}
+		} else {
+			// 到arguments中获取
+			String cacheKey = null;
+			Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+			if (parameterAnnotations.length == 0) {
+				// 该方法没有参数
+				result = pjp.proceed();
+			} else {
+				for (int i = 0; i < parameterAnnotations.length; i++) {
+					int length = parameterAnnotations[i].length;
+					if (length > 0) {// 存在annotation
+						for (int j = 0; j < length; j++) {
+							if (parameterAnnotations[i][j] instanceof MeilaCacheParam) {
+								cacheKey = String.valueOf(arguments[i]);
+								break;
+							}
+						}
+					}
+				}
+				if (cacheKey == null) {// 没找到MeilaCacheParam，默认使用第一个参数
+					cacheKey = String.valueOf(arguments[0]);
+				}
+				cacheKey = anno.type().getPrefix() + cacheKey;
+				// 试图获取cache中的值
+				result = get(cacheKey, returnType);
+				if (result == null) {
+					if ((arguments != null) && (arguments.length != 0)) {
+						result = pjp.proceed(arguments);
+					} else {
+						result = pjp.proceed();
+					}
+					int expire = expireTime;
+
+					if (anno.expireTime() > 0) {// 当注解中存在配置时，替换当前值
+						expire = anno.expireTime();
+					}
+					put(cacheKey, result, expire);
+				}
+			}
+
 		}
+
 		return result;
 	}
 
@@ -106,22 +170,47 @@ public class CacheAspect {
 		if (method == null) {
 			return;
 		}
-		CacheClear anno = method.getAnnotation(CacheClear.class);
+		MeilaCacheClear anno = method.getAnnotation(MeilaCacheClear.class);
 		if (anno == null) {
 			return;
 		}
-
-		if (anno.table() == null || "".equals(anno.table())) {
-			return;
-		}
-		if (anno.table().indexOf(",") >= 0) {
-			String[] tables = anno.table().split(",");
-			for (String table : tables) {
-				redisAdapter.del(table);
+		if (anno.type() == null || anno.type() == MeilaCacheType.None) {
+			if (anno.table() == null || "".equals(anno.table())) {
+				return;
+			}
+			if (anno.table().indexOf(",") >= 0) {
+				String[] tables = anno.table().split(",");
+				for (String table : tables) {
+					redisAdapter.del(table);
+				}
+			} else {
+				redisAdapter.del(anno.table());
 			}
 		} else {
-			redisAdapter.del(anno.table());
+			String cacheKey = null;
+			Object[] arguments = joinPoint.getArgs();
+			Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+			if (parameterAnnotations.length > 0) {
+				for (int i = 0; i < parameterAnnotations.length; i++) {
+					int length = parameterAnnotations[i].length;
+					if (length > 0) {// 存在annotation
+						for (int j = 0; j < length; j++) {
+							if (parameterAnnotations[i][j] instanceof MeilaCacheParam) {
+								cacheKey = String.valueOf(arguments[i]);
+								break;
+							}
+						}
+					}
+				}
+				if (cacheKey == null) {// 没找到MeilaCacheParam，默认使用第一个参数
+					cacheKey = String.valueOf(arguments[0]);
+				}
+				cacheKey = anno.type().getPrefix() + cacheKey;
+				redisAdapter.del(cacheKey);
+
+			}
 		}
+
 	}
 
 	/**
@@ -189,6 +278,21 @@ public class CacheAspect {
 	public <T> T get(final String key, final String hashKey, Class<T> elementType) {
 		if (redisAdapter.hexists(key, hashKey)) {
 			byte[] cacheValue = redisAdapter.hget(key.getBytes(), hashKey.getBytes());
+			@SuppressWarnings("unchecked")
+			T value = (T) unserialize(cacheValue);
+			return value;
+		}
+		return null;
+	}
+
+	public void put(final String key, Object value, int expireTime) {
+		redisAdapter.set(key.getBytes(), serialize(value));
+		redisAdapter.expire(key, expireTime);
+	}
+
+	public <T> T get(final String key, Class<T> elementType) {
+		if (redisAdapter.exists(key)) {
+			byte[] cacheValue = redisAdapter.get(key.getBytes());
 			@SuppressWarnings("unchecked")
 			T value = (T) unserialize(cacheValue);
 			return value;

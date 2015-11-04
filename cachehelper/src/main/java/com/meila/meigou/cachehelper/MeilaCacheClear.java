@@ -16,10 +16,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.METHOD })
 @Documented
-public @interface Cached {
-	String table() default "";// 对应数据库中的table name
+public @interface MeilaCacheClear {
+	String table() default "";// 根据数据库table name清空缓存
 
-	String key() default "";// 不指定时默认生成key
-
-	int expireTime() default 3600;
+	MeilaCacheType type() default MeilaCacheType.None;// 缓存类型，当不为None时table失效
 }
