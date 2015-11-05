@@ -80,5 +80,8 @@ cache-helper的目的是封装缓存的使用，各系统间只需要简易配�
 	    return productToVo(product, skuDisplay);
 	}
 
-	
+##不使用注解直接清空缓存	
+	@Autowired
+	private MeilaCacheUtils cacheUtils;
+	cacheUtils.del(MeilaCacheType.Product, "productcode");
 	
