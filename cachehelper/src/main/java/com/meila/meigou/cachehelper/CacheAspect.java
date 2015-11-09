@@ -5,6 +5,9 @@ package com.meila.meigou.cachehelper;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -227,7 +230,12 @@ public class CacheAspect {
         Method method = null;
         try {
             method = pjp.getTarget().getClass().getMethod(pjp.getSignature().getName(), argTypes);
-        } catch (NoSuchMethodException | SecurityException e) {
+        } catch (NoSuchMethodException e) {
+            method = findMethod(pjp.getTarget().getClass(), pjp.getSignature().getName(), argTypes);
+            if (method == null) {
+                log.error("CacheAspect cannot get method for " + pjp.getSignature().getName(), e);
+            }
+        } catch (SecurityException e) {
             log.error("CacheAspect cannot get method with expect annotation", e);
         }
         return method;
@@ -245,11 +253,62 @@ public class CacheAspect {
         Method method = null;
         try {
             method = jp.getTarget().getClass().getMethod(jp.getSignature().getName(), argTypes);
-        } catch (NoSuchMethodException | SecurityException e) {
+        } catch (NoSuchMethodException e) {
+            method = findMethod(jp.getTarget().getClass(), jp.getSignature().getName(), argTypes);
+            if (method == null) {
+                log.error("CacheAspect cannot get method for " + jp.getSignature().getName(), e);
+            }
+        } catch (SecurityException e) {
             log.error("CacheAspect cannot get method with expect annotation", e);
         }
         return method;
 
+    }
+
+    public static Method findMethod(Class clazz, String methodName, Class[] paramsTypes) {
+        Method[] methods = clazz.getDeclaredMethods();
+        List<Method> sameMethods = new ArrayList<Method>();
+        for (Method method : methods) {
+            if (method.getName().equals(methodName)) {
+                sameMethods.add(method);
+            }
+        }
+        if (sameMethods.isEmpty()) {
+            return null;
+        }
+        List<Method> sameCountParams = new ArrayList<Method>();
+        for (Method method : sameMethods) {
+            if (method.getParameterTypes().length == paramsTypes.length) {
+                sameCountParams.add(method);
+            }
+        }
+        if (sameCountParams.isEmpty()) {
+            return null;
+        }
+        for (Method method : sameCountParams) {
+            Class<?>[] params = method.getParameterTypes();
+            boolean good = true;
+            for (int i = 0; i < params.length && good; i++) {
+                if (params[i].isAssignableFrom(paramsTypes[i])) {
+                    good = true;
+                    continue;
+                }
+                if (params[i].isInterface() && Arrays.asList(paramsTypes[i].getInterfaces()).contains(params[i])) {
+                    good = true;
+                    continue;
+                } else {
+                    if (paramsTypes[i].getSuperclass().equals(params[i])) {
+                        good = true;
+                        continue;
+                    }
+                }
+                good = false;
+            }
+            if (good) {
+                return method;
+            }
+        }
+        return null;
     }
 
     /**
