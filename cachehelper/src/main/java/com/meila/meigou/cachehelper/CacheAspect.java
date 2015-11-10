@@ -60,11 +60,11 @@ public class CacheAspect {
         // 试图得到标注的Cached类
         Method method = getMethod(pjp);
         if (method == null) {
-            return pjp.proceed();
+            return proceed(pjp, arguments);
         }
         MeilaCached anno = method.getAnnotation(MeilaCached.class);
         if (anno == null) {
-            return pjp.proceed();
+            return proceed(pjp, arguments);
         }
         Object result = null;
         /*
@@ -84,11 +84,7 @@ public class CacheAspect {
                 }
                 result = get(cacheKey, returnType);
                 if (result == null) {
-                    if ((arguments != null) && (arguments.length != 0)) {
-                        result = pjp.proceed(arguments);
-                    } else {
-                        result = pjp.proceed();
-                    }
+                    result = proceed(pjp, arguments);
                     int expire = expireTime;
 
                     if (anno.expireTime() > 0) {// 当注解中存在配置时，替换当前值
@@ -107,11 +103,7 @@ public class CacheAspect {
             // 试图获取cache中的值
             result = get(cacheKey, hashKey, returnType);
             if (result == null) {
-                if ((arguments != null) && (arguments.length != 0)) {
-                    result = pjp.proceed(arguments);
-                } else {
-                    result = pjp.proceed();
-                }
+                result = proceed(pjp, arguments);
                 int expire = expireTime;
 
                 if (anno.expireTime() > 0) {// 当注解中存在配置时，替换当前值
@@ -145,11 +137,7 @@ public class CacheAspect {
                 // 试图获取cache中的值
                 result = get(cacheKey, returnType);
                 if (result == null) {
-                    if ((arguments != null) && (arguments.length != 0)) {
-                        result = pjp.proceed(arguments);
-                    } else {
-                        result = pjp.proceed();
-                    }
+                    result = proceed(pjp, arguments);
                     int expire = expireTime;
 
                     if (anno.expireTime() > 0) {// 当注解中存在配置时，替换当前值
@@ -212,6 +200,16 @@ public class CacheAspect {
             }
         }
 
+    }
+
+    private Object proceed(ProceedingJoinPoint pjp, Object[] arguments) throws Throwable {
+        Object result = null;
+        if ((arguments != null) && (arguments.length != 0)) {
+            result = pjp.proceed(arguments);
+        } else {
+            result = pjp.proceed();
+        }
+        return result;
     }
 
     /**
