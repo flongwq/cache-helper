@@ -32,6 +32,12 @@ public class MeilaCacheUtils {
     @Value("${meila.meigou.cachehelper.expiretime:3600}")
     private Integer expireTime;
 
+    @Value("${meila.meigou.cachehelper.projectName:unknown}")
+    private String projectName;
+    private Integer countExpireTime = 24 * 60 * 60;
+    private String KEY_COUNT_TOTAL = "meila_meigou_cacheutil_count_total_";
+    private String KEY_COUNT_MISS = "meila_meigou_cacheutil_count_miss_";
+
     public void del(MeilaCacheType cacheType, String key) throws Throwable {
         String cacheKey = cacheType.getPrefix() + key;
         redisAdapter.del(cacheKey);
@@ -64,5 +70,43 @@ public class MeilaCacheUtils {
             log.error("object fail to unserialize", e);
             throw new RuntimeException(e.getMessage(), e);
         }
+    }
+
+    public long addTotal() {
+        String keyTotal = KEY_COUNT_TOTAL + projectName;
+        String keyMiss = KEY_COUNT_MISS + projectName;
+        long total = redisAdapter.incr(keyTotal);
+        if (total == Long.MAX_VALUE) {// 重置计数器
+            redisAdapter.set(keyTotal, "1");
+            redisAdapter.set(keyMiss, "0");
+        }
+        redisAdapter.expire(keyTotal, countExpireTime);
+        return total;
+    }
+
+    public long addMiss() {
+        String keyTotal = KEY_COUNT_TOTAL + projectName;
+        String keyMiss = KEY_COUNT_MISS + projectName;
+        long miss = redisAdapter.incr(keyMiss);
+        if (miss == Long.MAX_VALUE) {// 重置计数器
+            redisAdapter.set(keyTotal, "1");
+            redisAdapter.set(keyMiss, "0");
+        }
+        redisAdapter.expire(keyMiss, countExpireTime);
+        return miss;
+    }
+
+    public float getHitRate() {
+        String keyTotal = KEY_COUNT_TOTAL + projectName;
+        String keyMiss = KEY_COUNT_MISS + projectName;
+        String total = redisAdapter.get(keyTotal);
+        if (total == null) {
+            return 0;
+        }
+        String miss = redisAdapter.get(keyMiss);
+        if (miss == null) {
+            return 0;
+        }
+        return (float) (Long.parseLong(total) - Long.parseLong(miss)) / Long.parseLong(total);
     }
 }

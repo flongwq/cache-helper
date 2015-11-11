@@ -8,7 +8,7 @@ package com.meila.meigou.cachehelper;
  *
  */
 public enum MeilaCacheType {
-    None, Product, Seller, Comment;
+    None, Product, Seller, Comment, Notice;
 
     public String getPrefix() {
         String defaultPrefix = "MeilaCache_Meigou_";
@@ -21,6 +21,8 @@ public enum MeilaCacheType {
                 return defaultPrefix + "Seller_";
             case Comment:
                 return defaultPrefix + "Comment_";
+            case Notice:
+                return defaultPrefix + "Notice_";
             default:
                 return defaultPrefix;
         }

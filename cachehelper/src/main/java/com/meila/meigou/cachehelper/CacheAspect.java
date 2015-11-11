@@ -37,6 +37,7 @@ public class CacheAspect {
     private RedisAdapter redisAdapter;
     @Autowired
     private MeilaCacheUtils cacheUtils;
+
     @Value("${meila.meigou.cachehelper.expiretime:3600}")
     private Integer expireTime;
 
@@ -329,12 +330,15 @@ public class CacheAspect {
     }
 
     public <T> T get(final String key, final String hashKey, Class<T> elementType) {
+        // 增加缓存命中率统计
+        cacheUtils.addTotal();
         if (redisAdapter.hexists(key, hashKey)) {
             byte[] cacheValue = redisAdapter.hget(key.getBytes(), hashKey.getBytes());
             @SuppressWarnings("unchecked")
             T value = (T) cacheUtils.unserialize(cacheValue);
             return value;
         }
+        cacheUtils.addMiss();
         return null;
     }
 
@@ -344,12 +348,15 @@ public class CacheAspect {
     }
 
     public <T> T get(final String key, Class<T> elementType) {
+        // 增加缓存命中率统计
+        cacheUtils.addTotal();
         if (redisAdapter.exists(key)) {
             byte[] cacheValue = redisAdapter.get(key.getBytes());
             @SuppressWarnings("unchecked")
             T value = (T) cacheUtils.unserialize(cacheValue);
             return value;
         }
+        cacheUtils.addMiss();
         return null;
     }
 
