@@ -84,4 +84,8 @@ cache-helper的目的是封装缓存的使用，各系统间只需要简易配�
 	@Autowired
 	private MeilaCacheUtils cacheUtils;
 	cacheUtils.del(MeilaCacheType.Product, "productcode");
-	
+##增加命中率统计器
+	在配置文件中增加meila.meigou.cachehelper.projectName=vdlm-web 指定项目名称
+	@Autowired
+    	private MeilaCacheUtils cacheUtils;
+	int ret=cacheUtils.getHitRate();//这里返回的是命中率
