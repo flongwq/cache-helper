@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:mybatis="http://mybatis.org/schema/mybatis-spring"
+	xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd
+        http://www.springframework.org/schema/util
+        http://www.springframework.org/schema/util/spring-util.xsd
+        http://www.springframework.org/schema/jdbc
+        http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd
+       http://mybatis.org/schema/mybatis-spring
+        http://mybatis.org/schema/mybatis-spring.xsd" 
+        default-autowire="byType">
+	
+	<tx:annotation-driven />
+	<context:annotation-config />
+	<aop:aspectj-autoproxy proxy-target-class="true" />
+	
+	<context:component-scan base-package="com.meila.meigou" />
+	
+	<bean id="jedisPool" class="com.meila.meigou.cachehelper.JedisPoolHelper" autowire="byType">
+        <constructor-arg name="poolConfig">
+            <bean class="org.apache.commons.pool2.impl.GenericObjectPoolConfig">
+                <property name="testOnBorrow" value="true"/>
+                <property name="maxIdle" value="20"/>
+                <property name="minIdle" value="10"/>
+                <property name="maxTotal" value="50"/>
+            </bean>
+        </constructor-arg>
+        <constructor-arg name="host" value="${redis.host}"/>
+        <constructor-arg name="port" value="${redis.port}"/>
+        <constructor-arg name="password" value="${redis.pass}"/>
+        <constructor-arg name="timeout" value="${redis.timeout}"/>
+        <constructor-arg name="database" value="${redis.default.db}"/>
+	</bean>
+
+    <bean id="redisAdapter" class="com.meila.meigou.cachehelper.RedisAdapter" autowire="byType">
+        <constructor-arg name="pool" ref="jedisPool"/>
+    </bean>
+
+	<context:property-placeholder location="classpath*:config.properties"
+		ignore-unresolvable="true" />
+
+</beans>
