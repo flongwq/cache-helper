@@ -4,7 +4,7 @@
 
 	<groupId>com.meila.meigou</groupId>
 	<artifactId>cachehelper</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>cachehelper</name>
@@ -83,12 +83,12 @@
 		<repository>
 			<id>nexus-releases</id>
 			<name>Nexus Release Repository</name>
-			<url>http://172.16.1.194:8081/nexus/content/repositories/releases</url>
+			<url>http://172.16.2.166:8081/nexus/content/repositories/releases</url>
 		</repository>
 		<snapshotRepository>
 			<id>nexus-snapshots</id>
 			<name>Nexus Snapshot Repository</name>
-			<url>http://172.16.1.194:8081/nexus/content/repositories/snapshots</url>
+			<url>http://172.16.2.166:8081/nexus/content/repositories/snapshots</url>
 		</snapshotRepository>
 	</distributionManagement>
 
