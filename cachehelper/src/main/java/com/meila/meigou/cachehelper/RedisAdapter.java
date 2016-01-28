@@ -279,6 +279,15 @@ public class RedisAdapter {
 
     }
 
+    public Long zrem(final String key,final String... member) {
+        return execute(new JedisAction<Long>() {
+            @Override
+            public Long action(Jedis jedis) {
+                return jedis.zrem(key, member);
+            }
+        });
+    }
+
     public Long zcard(final String key) {
         return execute(new JedisAction<Long>() {
 
